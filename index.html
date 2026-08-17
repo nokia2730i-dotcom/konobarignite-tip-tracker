@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KonobarIgnite — Tip &amp; Earnings Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#1f2320; --paper:#faf7f2; --card:#ffffff;
+    --accent:#b5651d; --accent-dark:#8a4a12; --green:#3f6b4a;
+    --line:#e4ddd2; --muted:#7a7368; --danger:#b03a2e;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--paper);color:var(--ink);padding:24px;}
+  .wrap{max-width:960px;margin:0 auto;}
+  header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
+  h1{font-size:22px;margin:0 0 4px 0;}
+  .subtitle{color:var(--muted);font-size:13px;margin:0;}
+  .brand{color:var(--accent-dark);font-weight:700;}
+  .top-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  button{font-family:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px;font-size:13px;transition:all .15s ease;}
+  button:hover{border-color:var(--accent);color:var(--accent-dark);}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  button.primary:hover{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff;}
+  button.danger{color:var(--danger);}
+  button.danger:hover{border-color:var(--danger);}
+  select, input[type=text], input[type=date], input[type=number], input[type=email], input[type=password]{
+    font-family:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:var(--ink);
+  }
+  .tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .tab{padding:10px 14px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);}
+  .tab.active{color:var(--accent-dark);border-bottom-color:var(--accent);font-weight:600;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;}
+  .card h2{font-size:15px;margin:0 0 12px 0;}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;align-items:end;}
+  .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;}
+  .field input, .field select{width:100%;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;}
+  tr:hover td{background:#fbf7ee;}
+  .num{text-align:right;font-variant-numeric:tabular-nums;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:#eef3ee;color:var(--green);}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px;}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;}
+  .stat .label{font-size:11px;color:var(--muted);margin-bottom:4px;}
+  .stat .value{font-size:20px;font-weight:700;color:var(--accent-dark);}
+  .bars{display:flex;flex-direction:column;gap:8px;}
+  .bar-row{display:grid;grid-template-columns:90px 1fr 70px;gap:8px;align-items:center;font-size:12px;}
+  .bar-track{background:#f1ece1;border-radius:6px;height:14px;overflow:hidden;}
+  .bar-fill{background:linear-gradient(90deg,var(--accent),var(--accent-dark));height:100%;border-radius:6px;}
+  .empty{color:var(--muted);font-size:13px;padding:16px 0;text-align:center;}
+  .split-row{display:grid;grid-template-columns:1.4fr .8fr .8fr auto;gap:8px;margin-bottom:8px;align-items:center;}
+  .footer-note{font-size:11px;color:var(--muted);margin-top:24px;text-align:center;}
+  .icon-btn{padding:4px 8px;font-size:12px;}
+
+  /* auth screen */
+  #authScreen{max-width:380px;margin:80px auto;text-align:center;}
+  #authScreen .card{text-align:left;}
+  .auth-toggle{display:flex;gap:8px;margin-bottom:16px;justify-content:center;}
+  .auth-toggle button{flex:1;}
+  .auth-toggle button.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .field-full{margin-bottom:10px;}
+  .field-full input{width:100%;}
+  .auth-msg{font-size:12px;margin-top:10px;min-height:16px;}
+  .auth-msg.error{color:var(--danger);}
+  .auth-msg.ok{color:var(--green);}
+  #appScreen{display:none;}
+  .user-badge{font-size:12px;color:var(--muted);}
+
+  @media print{
+    .top-actions, .tabs, .no-print, button{display:none !important;}
+    .panel{display:block !important;}
+    body{background:#fff;padding:0;}
+    .card{break-inside:avoid;border:1px solid #ccc;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div id="authScreen">
+  <h1 style="text-align:center;"><span class="brand">KonobarIgnite</span></h1>
+  <p class="subtitle" style="text-align:center;margin-bottom:20px;" data-t="authSubtitle">Sign in to track your tips and earnings.</p>
+  <div class="card">
+    <div class="auth-toggle">
+      <button id="tabLogin" class="active" onclick="switchAuthTab('login')" data-t="tabLogin">Log in</button>
+      <button id="tabRegister" onclick="switchAuthTab('register')" data-t="tabRegister">Register</button>
+    </div>
+    <div class="field-full"><input type="email" id="auth-email" placeholder="you@email.com"></div>
+    <div class="field-full"><input type="password" id="auth-password" placeholder="••••••••"></div>
+    <button class="primary" style="width:100%" onclick="doAuth()" id="authSubmitBtn" data-t="btnLogin">Log in</button>
+    <div class="auth-msg" id="authMsg"></div>
+  </div>
+  <select id="langSelectAuth" onchange="setLang(this.value)" style="margin-top:10px;">
+    <option value="en">English</option>
+    <option value="sr">Srpski</option>
+  </select>
+</div>
+
+<!-- ============ APP SCREEN ============ -->
+<div id="appScreen">
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1><span class="brand">KonobarIgnite</span> — <span data-t="title">Tip &amp; Earnings Tracker</span></h1>
+      <p class="subtitle"><span data-t="subtitle">Track your daily tips, wages, and shift performance.</span> — <span class="user-badge" id="userBadge"></span></p>
+    </div>
+    <div class="top-actions no-print">
+      <select id="langSelect" onchange="setLang(this.value)">
+        <option value="en">English</option>
+        <option value="sr">Srpski</option>
+      </select>
+      <button onclick="window.print()" data-t="btnPrint">Print</button>
+      <button onclick="logout()" data-t="btnLogout">Log out</button>
+    </div>
+  </header>
+
+  <div class="tabs no-print">
+    <div class="tab active" data-panel="daily" onclick="showTab('daily')" data-t="tabDaily">Daily Entries</div>
+    <div class="tab" data-panel="weekly" onclick="showTab('weekly')" data-t="tabWeekly">Weekly Summary</div>
+    <div class="tab" data-panel="monthly" onclick="showTab('monthly')" data-t="tabMonthly">Monthly Summary</div>
+    <div class="tab" data-panel="split" onclick="showTab('split')" data-t="tabSplit">Tip Split Calculator</div>
+  </div>
+
+  <div class="panel active" id="panel-daily">
+    <div class="card">
+      <h2 data-t="addEntry">Add a shift entry</h2>
+      <div class="form-grid">
+        <div class="field"><label data-t="fDate">Date</label><input type="date" id="in-date"></div>
+        <div class="field"><label data-t="fShift">Shift</label>
+          <select id="in-shift">
+            <option value="morning" data-t="shiftMorning">Morning</option>
+            <option value="evening" data-t="shiftEvening">Evening</option>
+          </select>
+        </div>
+        <div class="field"><label data-t="fTables">Tables/Guests</label><input type="number" id="in-tables" min="0" step="1"></div>
+        <div class="field"><label data-t="fCash">Cash tips</label><input type="number" id="in-cash" min="0" step="0.01"></div>
+        <div class="field"><label data-t="fCard">Card tips</label><input type="number" id="in-card" min="0" step="0.01"></div>
+        <div class="field"><label data-t="fWage">Hourly wage</label><input type="number" id="in-wage" min="0" step="0.01"></div>
+        <div class="field"><label data-t="fHours">Hours worked</label><input type="number" id="in-hours" min="0" step="0.25"></div>
+        <div class="field" style="grid-column:span 2;"><label data-t="fNotes">Notes</label><input type="text" id="in-notes"></div>
+        <div class="field"><button class="primary" style="width:100%" onclick="addEntry()" data-t="btnAdd">Add entry</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 data-t="entriesTitle">Your entries</h2>
+      <div id="entries-table"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-weekly">
+    <div class="card"><h2 data-t="weeklyTitle">This week and previous weeks</h2><div id="weekly-content"></div></div>
+  </div>
+
+  <div class="panel" id="panel-monthly">
+    <div class="card"><h2 data-t="monthlyTitle">Monthly overview</h2><div id="monthly-content"></div></div>
+  </div>
+
+  <div class="panel" id="panel-split">
+    <div class="card">
+      <h2 data-t="splitTitle">Tip pool split calculator</h2>
+      <p class="subtitle" data-t="splitDesc">Enter the total pooled tip amount, then add each staff member with hours worked.</p>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="field"><label data-t="fPool">Total pool amount</label><input type="number" id="pool-total" min="0" step="0.01" oninput="renderSplit()"></div>
+      </div>
+      <div id="split-rows"></div>
+      <button onclick="addSplitRow()" data-t="btnAddStaff" class="no-print">+ Add staff member</button>
+      <div id="split-result" style="margin-top:16px;"></div>
+    </div>
+  </div>
+
+  <p class="footer-note" data-t="footer">KonobarIgnite — practical tools for restaurants, hotels, and cafés.</p>
+</div>
+</div>
+
+<script>
+/* =====================================================================
+   SUPABASE CONFIG — popuni ovo pre nego što objaviš (Supabase Dashboard
+   -> Settings -> API -> Project URL i anon public key)
+   ===================================================================== */
+const SUPABASE_URL = "https://qfcdkhvnjduemulrijwk.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_lW_hsvTuVR8IicNVaUjZxg_O-3pknvH";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ---------- i18n ---------- */
+const dict = {
+  en: {
+    title:"Tip & Earnings Tracker", subtitle:"Track your daily tips, wages, and shift performance.",
+    authSubtitle:"Sign in to track your tips and earnings.", tabLogin:"Log in", tabRegister:"Register",
+    btnLogin:"Log in", btnRegister:"Create account", btnLogout:"Log out",
+    btnPrint:"Print",
+    tabDaily:"Daily Entries", tabWeekly:"Weekly Summary", tabMonthly:"Monthly Summary", tabSplit:"Tip Split Calculator",
+    addEntry:"Add a shift entry", fDate:"Date", fShift:"Shift", shiftMorning:"Morning", shiftEvening:"Evening",
+    fTables:"Tables/Guests", fCash:"Cash tips", fCard:"Card tips", fWage:"Hourly wage", fHours:"Hours worked",
+    fNotes:"Notes", btnAdd:"Add entry", entriesTitle:"Your entries",
+    weeklyTitle:"This week and previous weeks", monthlyTitle:"Monthly overview",
+    splitTitle:"Tip pool split calculator",
+    splitDesc:"Enter the total pooled tip amount, then add each staff member with hours worked.",
+    fPool:"Total pool amount", btnAddStaff:"+ Add staff member",
+    footer:"KonobarIgnite — practical tools for restaurants, hotels, and cafés.",
+    colDate:"Date", colShift:"Shift", colTables:"Tables", colCash:"Cash", colCard:"Card", colWage:"Wage", colHours:"Hours", colTotal:"Total", colNotes:"Notes",
+    noEntries:"No entries yet. Add your first shift above.",
+    total:"Total", avgPerShift:"Avg / shift", bestDay:"Best day", shiftsCount:"Shifts logged",
+    week:"Week of", noWeek:"No entries yet.", month:"Month", noMonth:"No entries yet.",
+    vsPrev:"vs. previous month",
+    staffName:"Staff name", staffHours:"Hours", remove:"Remove", perHour:"Per hour rate",
+    loading:"Loading…"
+  },
+  sr: {
+    title:"Tracker napojnica i zarade", subtitle:"Prati dnevne napojnice, platu i učinak po smeni.",
+    authSubtitle:"Uloguj se da pratiš napojnice i zaradu.", tabLogin:"Prijava", tabRegister:"Registracija",
+    btnLogin:"Prijavi se", btnRegister:"Napravi nalog", btnLogout:"Odjava",
+    btnPrint:"Štampaj",
+    tabDaily:"Dnevni unosi", tabWeekly:"Nedeljni pregled", tabMonthly:"Mesečni pregled", tabSplit:"Kalkulator deljenja napojnica",
+    addEntry:"Dodaj unos za smenu", fDate:"Datum", fShift:"Smena", shiftMorning:"Jutro", shiftEvening:"Veče",
+    fTables:"Stolovi/Gosti", fCash:"Keš napojnice", fCard:"Napojnice na kartici", fWage:"Plata po satu", fHours:"Odrađeni sati",
+    fNotes:"Beleške", btnAdd:"Dodaj unos", entriesTitle:"Tvoji unosi",
+    weeklyTitle:"Ova i prethodne nedelje", monthlyTitle:"Mesečni pregled",
+    splitTitle:"Kalkulator deljenja napojnica",
+    splitDesc:"Unesi ukupan iznos napojnica u pool-u, pa dodaj svakog radnika sa brojem odrađenih sati.",
+    fPool:"Ukupan iznos pool-a", btnAddStaff:"+ Dodaj radnika",
+    footer:"KonobarIgnite — praktični alati za restorane, hotele i kafiće.",
+    colDate:"Datum", colShift:"Smena", colTables:"Stolovi", colCash:"Keš", colCard:"Kartica", colWage:"Plata", colHours:"Sati", colTotal:"Ukupno", colNotes:"Beleške",
+    noEntries:"Još nema unosa. Dodaj prvu smenu iznad.",
+    total:"Ukupno", avgPerShift:"Prosek / smena", bestDay:"Najbolji dan", shiftsCount:"Broj smena",
+    week:"Nedelja od", noWeek:"Još nema unosa.", month:"Mesec", noMonth:"Još nema unosa.",
+    vsPrev:"u odnosu na prethodni mesec",
+    staffName:"Ime radnika", staffHours:"Sati", remove:"Ukloni", perHour:"Iznos po satu",
+    loading:"Učitavanje…"
+  }
+};
+let currentLang = "en";
+function t(key){ return (dict[currentLang] && dict[currentLang][key]) || key; }
+function setLang(lang){
+  currentLang = lang;
+  document.querySelectorAll("[data-t]").forEach(el=>{ el.textContent = t(el.getAttribute("data-t")); });
+  document.getElementById("langSelectAuth").value = lang;
+  if(document.getElementById("langSelect")) document.getElementById("langSelect").value = lang;
+  document.getElementById("authSubmitBtn").textContent = t(authMode==="login" ? "btnLogin" : "btnRegister");
+  renderEntries(); renderWeekly(); renderMonthly(); renderSplit();
+}
+
+/* ---------- auth state ---------- */
+let authMode = "login";
+let currentUser = null;
+let entries = [];
+let splitStaff = [];
+
+function switchAuthTab(mode){
+  authMode = mode;
+  document.getElementById("tabLogin").classList.toggle("active", mode==="login");
+  document.getElementById("tabRegister").classList.toggle("active", mode==="register");
+  document.getElementById("authSubmitBtn").textContent = t(mode==="login" ? "btnLogin" : "btnRegister");
+  document.getElementById("authMsg").textContent = "";
+}
+
+async function doAuth(){
+  const email = document.getElementById("auth-email").value.trim();
+  const password = document.getElementById("auth-password").value;
+  const msg = document.getElementById("authMsg");
+  msg.className = "auth-msg"; msg.textContent = t("loading");
+  if(!email || !password){ msg.className="auth-msg error"; msg.textContent = "Email + password required."; return; }
+
+  let result;
+  if(authMode === "login"){
+    result = await supabase.auth.signInWithPassword({ email, password });
+  } else {
+    result = await supabase.auth.signUp({ email, password });
+  }
+  if(result.error){
+    msg.className = "auth-msg error";
+    msg.textContent = result.error.message;
+    return;
+  }
+  if(authMode === "register" && !result.data.session){
+    msg.className = "auth-msg ok";
+    msg.textContent = "Check your email to confirm your account, then log in.";
+    return;
+  }
+  onLoggedIn(result.data.session.user);
+}
+
+async function logout(){
+  await supabase.auth.signOut();
+  currentUser = null;
+  entries = []; splitStaff = [];
+  document.getElementById("appScreen").style.display = "none";
+  document.getElementById("authScreen").style.display = "block";
+}
+
+async function onLoggedIn(user){
+  currentUser = user;
+  document.getElementById("authScreen").style.display = "none";
+  document.getElementById("appScreen").style.display = "block";
+  document.getElementById("userBadge").textContent = user.email;
+  await loadEntries();
+  await loadSettings();
+  renderEntries(); renderWeekly(); renderMonthly(); renderSplit();
+}
+
+/* check existing session on page load */
+async function checkSession(){
+  const { data } = await supabase.auth.getSession();
+  if(data.session && data.session.user){
+    onLoggedIn(data.session.user);
+  }
+}
+
+/* ---------- data: entries (Supabase) ---------- */
+async function loadEntries(){
+  const { data, error } = await supabase.from('entries')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('date', { ascending: true });
+  if(!error) entries = data || [];
+}
+async function loadSettings(){
+  const { data, error } = await supabase.from('user_settings')
+    .select('*').eq('user_id', currentUser.id).maybeSingle();
+  if(!error && data){
+    splitStaff = data.split_staff || [];
+    if(document.getElementById("pool-total")) document.getElementById("pool-total").value = data.pool || "";
+    if(data.lang) setLang(data.lang);
+  }
+}
+async function saveSettings(){
+  if(!currentUser) return;
+  const pool = parseFloat(document.getElementById("pool-total").value) || 0;
+  await supabase.from('user_settings').upsert({
+    user_id: currentUser.id, lang: currentLang, pool, split_staff: splitStaff, updated_at: new Date().toISOString()
+  });
+}
+
+function fmt(n){ return (Math.round((n||0)*100)/100).toFixed(2); }
+function dayTotal(e){ return (parseFloat(e.cash)||0) + (parseFloat(e.card)||0) + ((parseFloat(e.wage)||0)*(parseFloat(e.hours)||0)); }
+
+function showTab(name){
+  document.querySelectorAll(".tab").forEach(el=>el.classList.toggle("active", el.dataset.panel===name));
+  document.querySelectorAll(".panel").forEach(el=>el.classList.remove("active"));
+  document.getElementById("panel-"+name).classList.add("active");
+  if(name==="weekly") renderWeekly();
+  if(name==="monthly") renderMonthly();
+  if(name==="split") renderSplit();
+}
+
+async function addEntry(){
+  const date = document.getElementById("in-date").value;
+  if(!date){ alert(currentLang==="sr" ? "Unesi datum." : "Please enter a date."); return; }
+  const e = {
+    user_id: currentUser.id,
+    date,
+    shift: document.getElementById("in-shift").value,
+    tables: document.getElementById("in-tables").value || null,
+    cash: document.getElementById("in-cash").value || 0,
+    card: document.getElementById("in-card").value || 0,
+    wage: document.getElementById("in-wage").value || 0,
+    hours: document.getElementById("in-hours").value || 0,
+    notes: document.getElementById("in-notes").value || null
+  };
+  const { error } = await supabase.from('entries').insert(e);
+  if(error){ alert(error.message); return; }
+  ["in-date","in-tables","in-cash","in-card","in-wage","in-hours","in-notes"].forEach(id=>document.getElementById(id).value="");
+  await loadEntries();
+  renderEntries();
+}
+async function deleteEntry(id){
+  await supabase.from('entries').delete().eq('id', id);
+  await loadEntries();
+  renderEntries();
+}
+function renderEntries(){
+  const box = document.getElementById("entries-table");
+  if(!box) return;
+  if(entries.length===0){ box.innerHTML = `<div class="empty">${t("noEntries")}</div>`; return; }
+  let rows = entries.map((e)=>{
+    const tot = dayTotal(e);
+    return `<tr>
+      <td>${e.date}</td>
+      <td><span class="pill">${t(e.shift==="morning"?"shiftMorning":"shiftEvening")}</span></td>
+      <td class="num">${e.tables||"–"}</td>
+      <td class="num">${fmt(e.cash)}</td>
+      <td class="num">${fmt(e.card)}</td>
+      <td class="num">${fmt(e.wage)}</td>
+      <td class="num">${e.hours||"–"}</td>
+      <td class="num"><strong>${fmt(tot)}</strong></td>
+      <td>${e.notes||""}</td>
+      <td class="no-print"><button class="icon-btn danger" onclick="deleteEntry('${e.id}')">✕</button></td>
+    </tr>`;
+  }).join("");
+  box.innerHTML = `<table><thead><tr>
+      <th>${t("colDate")}</th><th>${t("colShift")}</th><th>${t("colTables")}</th>
+      <th>${t("colCash")}</th><th>${t("colCard")}</th><th>${t("colWage")}</th>
+      <th>${t("colHours")}</th><th>${t("colTotal")}</th><th>${t("colNotes")}</th><th class="no-print"></th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function isoWeekKey(dateStr){
+  const d = new Date(dateStr+"T00:00:00");
+  const day = (d.getDay()+6)%7;
+  const monday = new Date(d); monday.setDate(d.getDate()-day);
+  return monday.toISOString().slice(0,10);
+}
+function groupBy(arr, keyFn){
+  const map = {};
+  arr.forEach(item=>{ const k = keyFn(item); if(!map[k]) map[k]=[]; map[k].push(item); });
+  return map;
+}
+function renderWeekly(){
+  const box = document.getElementById("weekly-content");
+  if(!box) return;
+  if(entries.length===0){ box.innerHTML = `<div class="empty">${t("noWeek")}</div>`; return; }
+  const groups = groupBy(entries, e=>isoWeekKey(e.date));
+  const weekKeys = Object.keys(groups).sort().reverse();
+  const maxTotal = Math.max(...weekKeys.map(k=>groups[k].reduce((s,e)=>s+dayTotal(e),0)));
+  let html = "";
+  weekKeys.forEach(k=>{
+    const list = groups[k];
+    const total = list.reduce((s,e)=>s+dayTotal(e),0);
+    const avg = total/list.length;
+    let best = list[0];
+    list.forEach(e=>{ if(dayTotal(e)>dayTotal(best)) best=e; });
+    const pct = maxTotal>0 ? Math.round((total/maxTotal)*100) : 0;
+    html += `<div style="margin-bottom:20px;">
+      <div style="font-weight:600;margin-bottom:8px;">${t("week")} ${k}</div>
+      <div class="stat-grid">
+        <div class="stat"><div class="label">${t("total")}</div><div class="value">${fmt(total)}</div></div>
+        <div class="stat"><div class="label">${t("avgPerShift")}</div><div class="value">${fmt(avg)}</div></div>
+        <div class="stat"><div class="label">${t("shiftsCount")}</div><div class="value">${list.length}</div></div>
+        <div class="stat"><div class="label">${t("bestDay")}</div><div class="value" style="font-size:14px;">${best.date} (${fmt(dayTotal(best))})</div></div>
+      </div>
+      <div class="bar-row"><div>${k}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div><div class="num">${fmt(total)}</div></div>
+    </div>`;
+  });
+  box.innerHTML = html;
+}
+
+function monthKey(dateStr){ return dateStr.slice(0,7); }
+function renderMonthly(){
+  const box = document.getElementById("monthly-content");
+  if(!box) return;
+  if(entries.length===0){ box.innerHTML = `<div class="empty">${t("noMonth")}</div>`; return; }
+  const groups = groupBy(entries, e=>monthKey(e.date));
+  const monthKeys = Object.keys(groups).sort();
+  const totals = monthKeys.map(k=>groups[k].reduce((s,e)=>s+dayTotal(e),0));
+  const maxTotal = Math.max(...totals);
+  let html = `<div class="bars" style="margin-bottom:20px;">`;
+  monthKeys.forEach((k,i)=>{
+    const pct = maxTotal>0 ? Math.round((totals[i]/maxTotal)*100) : 0;
+    html += `<div class="bar-row"><div>${k}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div><div class="num">${fmt(totals[i])}</div></div>`;
+  });
+  html += `</div>`;
+  monthKeys.slice().reverse().forEach((k,idx)=>{
+    const realIdx = monthKeys.length-1-idx;
+    const total = totals[realIdx];
+    const prevTotal = realIdx>0 ? totals[realIdx-1] : null;
+    let delta = "";
+    if(prevTotal!==null && prevTotal>0){
+      const pctChange = Math.round(((total-prevTotal)/prevTotal)*1000)/10;
+      delta = `<span style="color:${pctChange>=0?'var(--green)':'var(--danger)'}">${pctChange>=0?'+':''}${pctChange}% ${t("vsPrev")}</span>`;
+    }
+    html += `<div class="stat" style="margin-bottom:10px;"><div class="label">${t("month")}: ${k}</div><div class="value">${fmt(total)}</div><div style="font-size:12px;margin-top:4px;">${delta}</div></div>`;
+  });
+  box.innerHTML = html;
+}
+
+function addSplitRow(){ splitStaff.push({name:"", hours:""}); renderSplit(); saveSettings(); }
+function removeSplitRow(i){ splitStaff.splice(i,1); renderSplit(); saveSettings(); }
+function updateSplitField(i, field, val){ splitStaff[i][field] = val; renderSplit(); saveSettings(); }
+function renderSplit(){
+  const rowsBox = document.getElementById("split-rows");
+  if(!rowsBox) return;
+  if(splitStaff.length===0){ splitStaff.push({name:"",hours:""}); }
+  rowsBox.innerHTML = splitStaff.map((s,i)=>`
+    <div class="split-row">
+      <input type="text" placeholder="${t('staffName')}" value="${s.name||''}" oninput="updateSplitField(${i},'name',this.value)">
+      <input type="number" min="0" step="0.25" placeholder="${t('staffHours')}" value="${s.hours||''}" oninput="updateSplitField(${i},'hours',this.value)">
+      <div class="num" id="split-share-${i}">–</div>
+      <button class="icon-btn danger no-print" onclick="removeSplitRow(${i})">${t('remove')}</button>
+    </div>`).join("");
+  const pool = parseFloat(document.getElementById("pool-total").value)||0;
+  const totalHours = splitStaff.reduce((s,x)=>s+(parseFloat(x.hours)||0),0);
+  const perHour = totalHours>0 ? pool/totalHours : 0;
+  splitStaff.forEach((s,i)=>{
+    const share = (parseFloat(s.hours)||0)*perHour;
+    const el = document.getElementById("split-share-"+i);
+    if(el) el.textContent = fmt(share);
+  });
+  const resultBox = document.getElementById("split-result");
+  if(totalHours>0 && pool>0){
+    resultBox.innerHTML = `<div class="stat-grid">
+      <div class="stat"><div class="label">${t('perHour')}</div><div class="value">${fmt(perHour)}</div></div>
+      <div class="stat"><div class="label">${t('total')}</div><div class="value">${fmt(pool)}</div></div>
+    </div>`;
+  } else { resultBox.innerHTML = ""; }
+}
+document.addEventListener("input", (e)=>{
+  if(e.target && e.target.id === "pool-total") saveSettings();
+});
+
+setLang("en");
+checkSession();
+</script>
+</body>
+</html>
