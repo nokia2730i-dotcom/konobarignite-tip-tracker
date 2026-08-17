@@ -186,7 +186,7 @@
 const SUPABASE_URL = "https://qfcdkhvnjduemulrijwk.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_lW_hsvTuVR8IicNVaUjZxg_O-3pknvH";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ---------- i18n ---------- */
 const dict = {
@@ -269,9 +269,9 @@ async function doAuth(){
 
   let result;
   if(authMode === "login"){
-    result = await supabase.auth.signInWithPassword({ email, password });
+    result = await sb.auth.signInWithPassword({ email, password });
   } else {
-    result = await supabase.auth.signUp({ email, password });
+    result = await sb.auth.signUp({ email, password });
   }
   if(result.error){
     msg.className = "auth-msg error";
@@ -287,7 +287,7 @@ async function doAuth(){
 }
 
 async function logout(){
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
   currentUser = null;
   entries = []; splitStaff = [];
   document.getElementById("appScreen").style.display = "none";
@@ -306,7 +306,7 @@ async function onLoggedIn(user){
 
 /* check existing session on page load */
 async function checkSession(){
-  const { data } = await supabase.auth.getSession();
+  const { data } = await sb.auth.getSession();
   if(data.session && data.session.user){
     onLoggedIn(data.session.user);
   }
@@ -314,14 +314,14 @@ async function checkSession(){
 
 /* ---------- data: entries (Supabase) ---------- */
 async function loadEntries(){
-  const { data, error } = await supabase.from('entries')
+  const { data, error } = await sb.from('entries')
     .select('*')
     .eq('user_id', currentUser.id)
     .order('date', { ascending: true });
   if(!error) entries = data || [];
 }
 async function loadSettings(){
-  const { data, error } = await supabase.from('user_settings')
+  const { data, error } = await sb.from('user_settings')
     .select('*').eq('user_id', currentUser.id).maybeSingle();
   if(!error && data){
     splitStaff = data.split_staff || [];
@@ -332,7 +332,7 @@ async function loadSettings(){
 async function saveSettings(){
   if(!currentUser) return;
   const pool = parseFloat(document.getElementById("pool-total").value) || 0;
-  await supabase.from('user_settings').upsert({
+  await sb.from('user_settings').upsert({
     user_id: currentUser.id, lang: currentLang, pool, split_staff: splitStaff, updated_at: new Date().toISOString()
   });
 }
@@ -363,14 +363,14 @@ async function addEntry(){
     hours: document.getElementById("in-hours").value || 0,
     notes: document.getElementById("in-notes").value || null
   };
-  const { error } = await supabase.from('entries').insert(e);
+  const { error } = await sb.from('entries').insert(e);
   if(error){ alert(error.message); return; }
   ["in-date","in-tables","in-cash","in-card","in-wage","in-hours","in-notes"].forEach(id=>document.getElementById(id).value="");
   await loadEntries();
   renderEntries();
 }
 async function deleteEntry(id){
-  await supabase.from('entries').delete().eq('id', id);
+  await sb.from('entries').delete().eq('id', id);
   await loadEntries();
   renderEntries();
 }
