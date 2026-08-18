@@ -49,7 +49,8 @@
   .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;align-items:end;}
   .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;}
   .field input, .field select{width:100%;}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px;}
   th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);}
   th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;}
   tr:hover td{background:#fbf7ee;}
@@ -87,6 +88,29 @@
     .panel{display:block !important;}
     body{background:#fff;padding:0;}
     .card{break-inside:avoid;border:1px solid #ccc;}
+  }
+
+  /* ---------- responsive: phones & small screens ---------- */
+  @media (max-width: 600px){
+    body{padding:12px;}
+    header{flex-direction:column;align-items:stretch;gap:10px;}
+    h1{font-size:19px;}
+    .top-actions{width:100%;}
+    .top-actions select, .top-actions button{flex:1;min-width:0;}
+    .tabs{gap:2px;}
+    .tab{padding:8px 10px;font-size:12px;flex:1;text-align:center;}
+    .card{padding:14px;}
+    .form-grid{grid-template-columns:repeat(2,1fr);}
+    .form-grid > .field:last-child{grid-column:1 / -1;}
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .stat .value{font-size:17px;}
+    .split-row{grid-template-columns:1fr 64px 64px auto;gap:6px;font-size:12px;}
+    #authScreen{max-width:100%;margin:32px auto;padding:0 4px;}
+    #authScreen h1{font-size:20px;}
+  }
+  @media (max-width: 380px){
+    .form-grid{grid-template-columns:1fr 1fr;}
+    .bar-row{grid-template-columns:60px 1fr 56px;font-size:11px;}
   }
 </style>
 </head>
@@ -510,11 +534,11 @@ function renderEntries(){
       <td class="no-print"><button class="icon-btn danger" onclick="deleteEntry('${e.id}')">✕</button></td>
     </tr>`;
   }).join("");
-  box.innerHTML = `<table><thead><tr>
+  box.innerHTML = `<div class="table-scroll"><table><thead><tr>
       <th>${t("colDate")}</th><th>${t("colShift")}</th><th>${t("colTables")}</th>
       <th>${t("colCash")}</th><th>${t("colCard")}</th><th>${t("colWage")}</th>
       <th>${t("colHours")}</th><th>${t("colTotal")}</th><th>${t("colNotes")}</th><th class="no-print"></th>
-    </tr></thead><tbody>${rows}</tbody></table>`;
+    </tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function isoWeekKey(dateStr){
