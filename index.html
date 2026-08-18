@@ -107,6 +107,28 @@
     .split-row{grid-template-columns:1fr 64px 64px auto;gap:6px;font-size:12px;}
     #authScreen{max-width:100%;margin:32px auto;padding:0 4px;}
     #authScreen h1{font-size:20px;}
+
+    /* Turn the entries table into a stacked card list — no more horizontal
+       scroll trap that blocks vertical page scrolling on touch devices. */
+    .table-scroll{overflow-x:visible;margin:0;padding:0;}
+    .table-scroll table{min-width:0;width:100%;}
+    .table-scroll thead{display:none;}
+    .table-scroll tr{
+      display:block;border:1px solid var(--line);border-radius:10px;
+      margin-bottom:10px;padding:10px 12px;background:#fff;
+    }
+    .table-scroll tr:hover td{background:transparent;}
+    .table-scroll td{
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      border-bottom:1px solid #f1ece1;padding:6px 0;text-align:right;
+    }
+    .table-scroll td:last-child{border-bottom:none;}
+    .table-scroll td::before{
+      content:attr(data-label);color:var(--muted);font-size:11px;
+      text-transform:uppercase;letter-spacing:.3px;text-align:left;
+    }
+    .table-scroll td.no-print{justify-content:flex-end;}
+    .table-scroll td.no-print::before{content:"";}
   }
   @media (max-width: 380px){
     .form-grid{grid-template-columns:1fr 1fr;}
@@ -522,16 +544,16 @@ function renderEntries(){
   let rows = entries.map((e)=>{
     const tot = dayTotal(e);
     return `<tr>
-      <td>${e.date}</td>
-      <td><span class="pill">${t(e.shift==="morning"?"shiftMorning":"shiftEvening")}</span></td>
-      <td class="num">${e.tables||"–"}</td>
-      <td class="num">${fmt(e.cash)}</td>
-      <td class="num">${fmt(e.card)}</td>
-      <td class="num">${fmt(e.wage)}</td>
-      <td class="num">${e.hours||"–"}</td>
-      <td class="num"><strong>${fmt(tot)}</strong></td>
-      <td>${e.notes||""}</td>
-      <td class="no-print"><button class="icon-btn danger" onclick="deleteEntry('${e.id}')">✕</button></td>
+      <td data-label="${t('colDate')}">${e.date}</td>
+      <td data-label="${t('colShift')}"><span class="pill">${t(e.shift==="morning"?"shiftMorning":"shiftEvening")}</span></td>
+      <td class="num" data-label="${t('colTables')}">${e.tables||"–"}</td>
+      <td class="num" data-label="${t('colCash')}">${fmt(e.cash)}</td>
+      <td class="num" data-label="${t('colCard')}">${fmt(e.card)}</td>
+      <td class="num" data-label="${t('colWage')}">${fmt(e.wage)}</td>
+      <td class="num" data-label="${t('colHours')}">${e.hours||"–"}</td>
+      <td class="num" data-label="${t('colTotal')}"><strong>${fmt(tot)}</strong></td>
+      <td data-label="${t('colNotes')}">${e.notes||""}</td>
+      <td class="no-print"><button class="icon-btn danger" onclick="deleteEntry('${e.id}')">✕ ${t('remove')||''}</button></td>
     </tr>`;
   }).join("");
   box.innerHTML = `<div class="table-scroll"><table><thead><tr>
