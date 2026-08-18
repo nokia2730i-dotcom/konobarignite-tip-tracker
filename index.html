@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KonobarIgnite — Tip &amp; Earnings Tracker</title>
+
+<!-- PWA: install to home screen -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#b5651d">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tip Tracker">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -611,6 +622,12 @@ document.addEventListener("input", (e)=>{
 
 setLang("en");
 checkSession();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => { /* ignore, app still works without it */ });
+  });
+}
 </script>
 </body>
 </html>
