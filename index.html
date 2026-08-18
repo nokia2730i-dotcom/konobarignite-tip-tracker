@@ -94,7 +94,31 @@
     <div class="field-full"><input type="password" id="auth-password" placeholder="••••••••"></div>
     <button class="primary" style="width:100%" onclick="doAuth()" id="authSubmitBtn" data-t="btnLogin">Log in</button>
     <div class="auth-msg" id="authMsg"></div>
+    <div style="text-align:center;margin-top:10px;">
+      <a href="#" id="forgotLink" onclick="showResetForm();return false;" data-t="forgotLink" style="font-size:12px;color:var(--muted);text-decoration:underline;">Forgot password?</a>
+    </div>
   </div>
+
+  <!-- Forgot password: request reset link -->
+  <div class="card" id="resetCard" style="display:none;">
+    <h2 data-t="resetTitle" style="font-size:15px;margin:0 0 10px 0;">Reset your password</h2>
+    <p class="subtitle" data-t="resetDesc" style="margin-bottom:12px;">Enter your email and we'll send you a reset link.</p>
+    <div class="field-full"><input type="email" id="reset-email" placeholder="you@email.com"></div>
+    <button class="primary" style="width:100%" onclick="sendResetLink()" data-t="btnSendReset">Send reset link</button>
+    <div class="auth-msg" id="resetMsg"></div>
+    <div style="text-align:center;margin-top:10px;">
+      <a href="#" onclick="hideResetForm();return false;" data-t="backToLogin" style="font-size:12px;color:var(--muted);text-decoration:underline;">Back to log in</a>
+    </div>
+  </div>
+
+  <!-- Password recovery: set new password (shown after clicking email link) -->
+  <div class="card" id="newPasswordCard" style="display:none;">
+    <h2 data-t="newPasswordTitle" style="font-size:15px;margin:0 0 10px 0;">Set a new password</h2>
+    <div class="field-full"><input type="password" id="new-password" placeholder="••••••••"></div>
+    <button class="primary" style="width:100%" onclick="setNewPassword()" data-t="btnSaveNewPassword">Save new password</button>
+    <div class="auth-msg" id="newPasswordMsg"></div>
+  </div>
+
   <select id="langSelectAuth" onchange="setLang(this.value)" style="margin-top:10px;">
     <option value="en">English</option>
     <option value="sr">Srpski</option>
@@ -210,7 +234,14 @@ const dict = {
     week:"Week of", noWeek:"No entries yet.", month:"Month", noMonth:"No entries yet.",
     vsPrev:"vs. previous month",
     staffName:"Staff name", staffHours:"Hours", remove:"Remove", perHour:"Per hour rate",
-    loading:"Loading…"
+    loading:"Loading…",
+    forgotLink:"Forgot password?", resetTitle:"Reset your password",
+    resetDesc:"Enter your email and we'll send you a reset link.",
+    btnSendReset:"Send reset link", backToLogin:"Back to log in",
+    newPasswordTitle:"Set a new password", btnSaveNewPassword:"Save new password",
+    resetLinkSent:"Check your email for the reset link.",
+    passwordUpdated:"Password updated. You can log in now.",
+    passwordTooShort:"Password must be at least 6 characters."
   },
   sr: {
     title:"Tracker napojnica i zarade", subtitle:"Prati dnevne napojnice, platu i učinak po smeni.",
@@ -232,7 +263,14 @@ const dict = {
     week:"Nedelja od", noWeek:"Još nema unosa.", month:"Mesec", noMonth:"Još nema unosa.",
     vsPrev:"u odnosu na prethodni mesec",
     staffName:"Ime radnika", staffHours:"Sati", remove:"Ukloni", perHour:"Iznos po satu",
-    loading:"Učitavanje…"
+    loading:"Učitavanje…",
+    forgotLink:"Zaboravljena lozinka?", resetTitle:"Resetuj lozinku",
+    resetDesc:"Unesi svoj email i poslaćemo ti link za reset lozinke.",
+    btnSendReset:"Pošalji link za reset", backToLogin:"Nazad na prijavu",
+    newPasswordTitle:"Postavi novu lozinku", btnSaveNewPassword:"Sačuvaj novu lozinku",
+    resetLinkSent:"Proveri email za link za reset lozinke.",
+    passwordUpdated:"Lozinka je promenjena. Možeš da se uloguješ.",
+    passwordTooShort:"Lozinka mora imati bar 6 karaktera."
   }
 };
 let currentLang = "en";
@@ -285,6 +323,74 @@ async function doAuth(){
   }
   onLoggedIn(result.data.session.user);
 }
+
+/* ---------- forgot password ---------- */
+function showResetForm(){
+  document.querySelector("#authScreen .card").style.display = "none";
+  document.getElementById("resetCard").style.display = "block";
+  document.getElementById("newPasswordCard").style.display = "none";
+  document.getElementById("resetMsg").textContent = "";
+}
+function hideResetForm(){
+  document.querySelector("#authScreen .card").style.display = "block";
+  document.getElementById("resetCard").style.display = "none";
+}
+
+async function sendResetLink(){
+  const email = document.getElementById("reset-email").value.trim();
+  const msg = document.getElementById("resetMsg");
+  if(!email){ msg.className = "auth-msg error"; msg.textContent = "Email required."; return; }
+  msg.className = "auth-msg"; msg.textContent = t("loading");
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if(error){
+    msg.className = "auth-msg error";
+    msg.textContent = error.message;
+    return;
+  }
+  msg.className = "auth-msg ok";
+  msg.textContent = t("resetLinkSent");
+}
+
+async function setNewPassword(){
+  const password = document.getElementById("new-password").value;
+  const msg = document.getElementById("newPasswordMsg");
+  if(!password || password.length < 6){
+    msg.className = "auth-msg error";
+    msg.textContent = t("passwordTooShort");
+    return;
+  }
+  msg.className = "auth-msg"; msg.textContent = t("loading");
+  const { error } = await sb.auth.updateUser({ password });
+  if(error){
+    msg.className = "auth-msg error";
+    msg.textContent = error.message;
+    return;
+  }
+  msg.className = "auth-msg ok";
+  msg.textContent = t("passwordUpdated");
+  await sb.auth.signOut();
+  setTimeout(()=>{
+    document.getElementById("newPasswordCard").style.display = "none";
+    document.querySelector("#authScreen .card").style.display = "block";
+    document.getElementById("appScreen").style.display = "none";
+    document.getElementById("authScreen").style.display = "block";
+    switchAuthTab("login");
+  }, 1800);
+}
+
+/* Supabase fires a PASSWORD_RECOVERY event when the user lands here via the
+   reset-password email link — show the "set new password" screen for it. */
+sb.auth.onAuthStateChange((event, session) => {
+  if(event === "PASSWORD_RECOVERY"){
+    document.getElementById("authScreen").style.display = "block";
+    document.getElementById("appScreen").style.display = "none";
+    document.querySelector("#authScreen .card").style.display = "none";
+    document.getElementById("resetCard").style.display = "none";
+    document.getElementById("newPasswordCard").style.display = "block";
+  }
+});
 
 async function logout(){
   await sb.auth.signOut();
